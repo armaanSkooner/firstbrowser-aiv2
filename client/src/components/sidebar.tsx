@@ -1,20 +1,22 @@
 import { Link, useLocation } from "wouter";
-import { 
-  ChartLine, 
-  Home, 
-  MessageSquare, 
-  Users, 
-  ExternalLink, 
-  Settings, 
+import {
+  ChartLine,
+  Home,
+  MessageSquare,
+  Users,
+  ExternalLink,
+  Settings,
   User,
   Activity,
-  Zap
+  Zap,
+  Search
 } from "lucide-react";
 
 export default function Sidebar() {
   const [location] = useLocation();
 
   const navigationItems = [
+    { id: "company-search", label: "Company Search", icon: Search, path: "/company-search" },
     { id: "prompt-generator", label: "Prompt Generator", icon: Zap, path: "/prompt-generator" },
     { id: "dashboard", label: "Dashboard", icon: Home, path: "/" },
     { id: "prompt-results", label: "Prompt Results", icon: MessageSquare, path: "/prompt-results" },

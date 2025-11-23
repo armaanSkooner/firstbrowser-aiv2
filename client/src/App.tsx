@@ -11,12 +11,16 @@ import CompetitorsPage from "@/pages/competitors";
 import SourcesPage from "@/pages/sources";
 import SettingsPage from "@/pages/settings";
 import AnalysisProgressPage from "@/pages/analysis-progress";
+import CompanySearchPage from "@/pages/company-search";
+import CompanyResultsPage from "@/pages/company-results";
 import NotFound from "@/pages/not-found";
 
 function Router() {
   return (
     <Layout>
       <Switch>
+        <Route path="/company-search" component={CompanySearchPage} />
+        <Route path="/company-results" component={CompanyResultsPage} />
         <Route path="/prompt-generator" component={PromptGeneratorPage} />
         <Route path="/" component={Dashboard} />
         <Route path="/prompt-results" component={PromptResultsPage} />

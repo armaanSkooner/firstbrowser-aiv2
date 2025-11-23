@@ -642,7 +642,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/generate-topic-prompts', async (req, res) => {
     try {
       const { topicName, topicDescription, competitors, promptCount } = req.body;
-      
+
       if (!topicName || !topicDescription) {
         return res.status(400).json({ error: 'Topic name and description are required' });
       }
@@ -659,6 +659,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error generating topic prompts:', error);
       res.status(500).json({ error: 'Failed to generate topic prompts' });
+    }
+  });
+
+  // Company AEO Analysis - NEW endpoint for company search feature
+  app.post('/api/companies/analyze', async (req, res) => {
+    try {
+      const { query } = req.body;
+
+      if (!query || typeof query !== 'string' || !query.trim()) {
+        return res.status(400).json({ error: 'Company name or URL is required' });
+      }
+
+      console.log(`[${new Date().toISOString()}] Starting company AEO analysis for: ${query}`);
+
+      const { analyzeCompanyAEO } = await import('./services/company-aeo');
+      const result = await analyzeCompanyAEO(query.trim());
+
+      console.log(`[${new Date().toISOString()}] Company AEO analysis completed for: ${query}`);
+
+      res.json(result);
+    } catch (error) {
+      console.error('Error analyzing company AEO:', error);
+      res.status(500).json({
+        error: 'Failed to analyze company',
+        message: (error as Error).message
+      });
     }
   });
 
