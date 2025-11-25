@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: firstbrowser-ai
+    env: node
+    plan: starter
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: firstbrowser-db
+          property: connectionString
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: PROMPTS_PER_TOPIC
+        value: "20"
+      - key: ANALYSIS_FREQUENCY
+        value: "daily"
+
+databases:
+  - name: firstbrowser-db
+    plan: starter
+    databaseName: firstbrowser
+    user: firstbrowser
