@@ -1,5 +1,5 @@
 import { storage } from "../storage";
-import { analyzePromptResponse, generatePromptsForTopic } from "./llm";
+import { analyzePromptResponse, generatePromptsForTopic, analyzeBrandAndFindCompetitors } from "./llm";
 import { scrapeBrandWebsite, generateTopicsFromContent, extractDomainFromUrl, extractUrlsFromText } from "./scraper";
 import type { 
   InsertPrompt, 
@@ -184,6 +184,29 @@ export class BrandAnalyzer {
         });
 
         const content = await scrapeBrandWebsite(this.brandUrl || 'https://example.com');
+        
+        // Also analyze competitors early for better context
+        if (this.brandUrl) {
+          try {
+            const competitors = await analyzeBrandAndFindCompetitors(this.brandUrl);
+            console.log(`[${new Date().toISOString()}] Found ${competitors.length} competitors`);
+            
+            // Store competitors in database
+            for (const comp of competitors) {
+              let existingComp = await storage.getCompetitorByName(comp.name);
+              if (!existingComp) {
+                await storage.createCompetitor({
+                  name: comp.name,
+                  category: comp.category,
+                  mentionCount: 0
+                });
+              }
+            }
+          } catch (error) {
+            console.error(`[${new Date().toISOString()}] Error finding competitors:`, error);
+          }
+        }
+        
         const generatedTopics = await generateTopicsFromContent(content);
 
         // Step 2: Generate prompts for each topic
@@ -203,8 +226,18 @@ export class BrandAnalyzer {
           }
 
           // Generate prompts for this topic using user settings or defaults
-          const promptsPerTopic = settings?.promptsPerTopic || 20;
-          const promptTexts = await generatePromptsForTopic(topic.name, topic.description, promptsPerTopic);
+          const promptsPerTopic = settings?.promptsPerTopic || 30; // Increased from 20 to 30 for more data
+          
+          // Get competitors to pass to prompt generation for better context
+          const competitors = await storage.getCompetitors();
+          const competitorNames = competitors.map(c => c.name);
+          
+          const promptTexts = await generatePromptsForTopic(
+            topic.name, 
+            topic.description, 
+            promptsPerTopic,
+            competitorNames
+          );
           
           for (const promptText of promptTexts) {
             allPrompts.push({

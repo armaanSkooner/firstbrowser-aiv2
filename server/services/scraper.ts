@@ -11,75 +11,157 @@ export interface ScrapedContent {
 
 export async function scrapeBrandWebsite(brandUrl: string): Promise<ScrapedContent> {
   try {
-    // Extract brand name from URL
-    const domain = extractDomainFromUrl(brandUrl);
-    const brandName = domain.split('.')[0].replace(/[^a-zA-Z]/g, '');
+    console.log(`[${new Date().toISOString()}] Scraping website: ${brandUrl}`);
     
-    // In a real implementation, you would scrape the actual website
-    // For now, generate generic content based on the brand name
-    return {
-      title: `${brandName} - Brand Analysis`,
-      description: `${brandName} is a technology platform providing various services and solutions.`,
-      features: [
-        "Modern Technology Stack",
-        "Scalable Infrastructure", 
-        "Developer-Friendly Tools",
-        "Cloud-Based Solutions",
-        "API Integration",
-        "Custom Configuration",
-        "Performance Optimization",
-        "Security Features"
+    // Ensure URL has protocol
+    if (!/^https?:\/\//i.test(brandUrl)) {
+      brandUrl = 'https://' + brandUrl;
+    }
+
+    // Fetch real website content
+    const websiteText = await fetchWebsiteText(brandUrl);
+    
+    if (!websiteText || websiteText.length < 50) {
+      console.log(`[${new Date().toISOString()}] Failed to fetch website, using domain name only`);
+      const domain = extractDomainFromUrl(brandUrl);
+      const brandName = domain.split('.')[0];
+      return {
+        title: brandName,
+        description: `Analysis for ${brandName}`,
+        features: [],
+        services: []
+      };
+    }
+
+    console.log(`[${new Date().toISOString()}] Extracted ${websiteText.length} characters from website`);
+
+    // Use OpenAI to analyze the real content and extract structured data
+    const OpenAI = (await import('openai')).default;
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+    const analysisPrompt = `Analyze this company website content and extract key information.
+
+Website content:
+"""
+${websiteText}
+"""
+
+Return a JSON object with:
+{
+  "title": "Company name or main heading",
+  "description": "One sentence describing what this company does",
+  "features": ["Key feature 1", "Key feature 2", ...], // 3-5 main features/capabilities
+  "services": ["Service/product 1", "Service/product 2", ...] // 3-5 main services/products
+}
+
+Be specific and use the actual services/features mentioned on the website.`;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: "You are an expert at analyzing company websites and extracting structured information. Return only valid JSON." },
+        { role: "user", content: analysisPrompt }
       ],
-      services: [
-        "Web Application Services",
-        "Cloud Infrastructure",
-        "API Development",
-        "Database Solutions",
-        "Deployment Services",
-        "Monitoring Tools",
-        "Development Tools"
-      ]
+      temperature: 0.3,
+      response_format: { type: "json_object" }
+    });
+
+    const result = JSON.parse(response.choices[0].message.content || '{}');
+    console.log(`[${new Date().toISOString()}] Website analysis complete:`, result);
+
+    return {
+      title: result.title || 'Unknown Company',
+      description: result.description || '',
+      features: result.features || [],
+      services: result.services || []
     };
+
   } catch (error) {
-    console.error("Error analyzing brand website:", error);
-    throw new Error("Failed to analyze brand website: " + (error as Error).message);
+    console.error(`[${new Date().toISOString()}] Error scraping website:`, error);
+    // Fallback: use domain name
+    const domain = extractDomainFromUrl(brandUrl);
+    const brandName = domain.split('.')[0];
+    return {
+      title: brandName,
+      description: `Analysis for ${brandName}`,
+      features: [],
+      services: []
+    };
   }
 }
 
 export async function generateTopicsFromContent(content: ScrapedContent): Promise<Array<{ name: string; description: string }>> {
-  // Generate generic topics that would be relevant for any brand
-  const topics = [
-    {
-      name: "Technology Stack",
-      description: "Analysis of the technology stack and development tools used"
-    },
-    {
-      name: "Market Position", 
-      description: "Understanding the brand's position in the market and competitive landscape"
-    },
-    {
-      name: "Service Offerings",
-      description: "Analysis of the services and products offered by the brand"
-    },
-    {
-      name: "Developer Experience",
-      description: "Evaluation of developer tools, documentation, and ease of use"
-    },
-    {
-      name: "Infrastructure & Scalability",
-      description: "Assessment of infrastructure capabilities and scaling solutions"
-    },
-    {
-      name: "Integration Capabilities",
-      description: "Analysis of API offerings and integration possibilities"
-    },
-    {
-      name: "Performance & Reliability",
-      description: "Evaluation of performance metrics and reliability features"
-    }
-  ];
+  try {
+    console.log(`[${new Date().toISOString()}] Generating industry-specific topics for: ${content.title}`);
 
-  return topics;
+    // Use AI to generate relevant, industry-specific topics based on actual company services
+    const OpenAI = (await import('openai')).default;
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+    const topicPrompt = `Based on this company information, generate 5-7 specific, relevant topic areas for AEO/GEO analysis.
+
+Company: ${content.title}
+Description: ${content.description}
+Features: ${content.features.join(', ')}
+Services: ${content.services.join(', ')}
+
+Generate topics that:
+1. Are specific to this company's actual industry and services
+2. Reflect real user questions and pain points in this industry
+3. Include both product-specific and use-case-specific topics
+4. Cover different customer segments (enterprise, SMB, individual)
+5. Address common problems users would search for
+
+Examples of good topics:
+- For a CRM company: "Small Business CRM Solutions", "Sales Pipeline Management", "Customer Support Integration"
+- For a payment processor: "Online Payment Processing", "Subscription Billing", "E-commerce Checkout Solutions"
+- For a cloud hosting: "Web Application Hosting", "Database Management Services", "CI/CD Pipeline Setup"
+
+Return ONLY a JSON array:
+[
+  {"name": "Specific Topic Name", "description": "Brief description of what users search for in this topic"},
+  ...
+]
+
+Make topics SPECIFIC to this company's industry, not generic.`;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: "You are an expert at understanding industries and generating relevant search topics. Return only valid JSON array." },
+        { role: "user", content: topicPrompt }
+      ],
+      temperature: 0.7,
+      response_format: { type: "json_object" }
+    });
+
+    const result = JSON.parse(response.choices[0].message.content || '{"topics":[]}');
+    const topics = result.topics || result;
+    
+    if (Array.isArray(topics) && topics.length > 0) {
+      console.log(`[${new Date().toISOString()}] Generated ${topics.length} industry-specific topics`);
+      return topics;
+    }
+
+    // Fallback to generic topics if AI generation fails
+    console.log(`[${new Date().toISOString()}] Falling back to generic topics`);
+    return [
+      { name: "Market Solutions", description: "Analysis of solutions in the company's market segment" },
+      { name: "Product Alternatives", description: "Comparison with alternative products and services" },
+      { name: "Implementation & Setup", description: "Common setup and implementation questions" },
+      { name: "Pricing & Plans", description: "Cost comparison and pricing structure inquiries" },
+      { name: "Integration & Compatibility", description: "Integration with existing tools and platforms" }
+    ];
+
+  } catch (error) {
+    console.error(`[${new Date().toISOString()}] Error generating topics:`, error);
+    // Fallback topics
+    return [
+      { name: "Market Solutions", description: "Analysis of solutions in the company's market segment" },
+      { name: "Product Alternatives", description: "Comparison with alternative products and services" },
+      { name: "Implementation & Setup", description: "Common setup and implementation questions" }
+    ];
+  }
 }
 
 export async function fetchWebsiteText(url: string): Promise<string> {
