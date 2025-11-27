@@ -1,6 +1,5 @@
 import { URL } from 'url';
-import axios from "axios";
-import * as cheerio from "cheerio";
+import puppeteer from "puppeteer";
 
 export interface ScrapedContent {
   title: string;
@@ -9,7 +8,93 @@ export interface ScrapedContent {
   services: string[];
 }
 
-export async function scrapeBrandWebsite(brandUrl: string): Promise<ScrapedContent> {
+// Helper to extract clean text from a page
+async function extractPageText(page: any): Promise<string> {
+  return await page.evaluate(() => {
+    // Remove scripts, styles, and other non-content elements
+    const scripts = document.querySelectorAll('script, style, noscript, iframe, svg, header, footer, nav');
+    scripts.forEach(script => script.remove());
+    
+    // Get visible text
+    return document.body.innerText
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 5000); // Increased limit for better context
+  });
+}
+
+export async function fetchWebsiteText(url: string): Promise<string> {
+  let browser;
+  try {
+    // Ensure the URL starts with http:// or https://
+    if (!/^https?:\/\//i.test(url)) {
+      url = 'https://' + url;
+    }
+
+    console.log(`[${new Date().toISOString()}] Launching Puppeteer for: ${url}`);
+    
+    browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--disable-gpu',
+        '--window-size=1920,1080'
+      ]
+    });
+
+    const page = await browser.newPage();
+    
+    // Set a realistic user agent to avoid bot detection
+    await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
+    
+    // Set extra headers
+    await page.setExtraHTTPHeaders({
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8'
+    });
+
+    console.log(`[${new Date().toISOString()}] Navigating to ${url}`);
+    await page.goto(url, { 
+      waitUntil: 'networkidle2',
+      timeout: 30000 
+    });
+
+    // Extract content
+    const text = await extractPageText(page);
+    
+    console.log(`[${new Date().toISOString()}] Extracted ${text.length} characters`);
+    return text;
+
+  } catch (error) {
+    console.error("Error fetching website with Puppeteer:", error);
+    
+    // Fallback: Try axios if Puppeteer fails (redundancy)
+    try {
+      console.log("Falling back to simple fetch...");
+      const { default: axios } = await import("axios");
+      const { load } = await import("cheerio");
+      const { data } = await axios.get(url, { 
+        timeout: 5000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+        }
+      });
+      const $ = load(data);
+      $('script, style, noscript, iframe, svg, header, footer, nav').remove();
+      return $('body').text().replace(/\s+/g, ' ').trim().slice(0, 5000);
+    } catch (fallbackError) {
+      console.error("Fallback fetch failed:", fallbackError);
+      return "";
+    }
+  } finally {
+    if (browser) {
+      await browser.close();
+    }
+  }
+}
   try {
     console.log(`[${new Date().toISOString()}] Scraping website: ${brandUrl}`);
     
@@ -165,22 +250,75 @@ Make topics SPECIFIC to this company's industry, not generic.`;
 }
 
 export async function fetchWebsiteText(url: string): Promise<string> {
+  let browser;
   try {
     // Ensure the URL starts with http:// or https://
     if (!/^https?:\/\//i.test(url)) {
       url = 'https://' + url;
     }
-    const { data: html } = await axios.get(url, { timeout: 10000 });
-    const $ = cheerio.load(html);
-    // Try to get the main content, fallback to body text
-    let mainText = $("main").text() || $("body").text();
-    // Clean up whitespace
-    mainText = mainText.replace(/\s+/g, " ").trim();
-    // Limit to first 2000 characters to avoid token overload
-    return mainText.slice(0, 2000);
+
+    console.log(`[${new Date().toISOString()}] Launching Puppeteer for: ${url}`);
+    
+    browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--disable-gpu',
+        '--window-size=1920,1080'
+      ]
+    });
+
+    const page = await browser.newPage();
+    
+    // Set a realistic user agent to avoid bot detection
+    await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
+    
+    // Set extra headers
+    await page.setExtraHTTPHeaders({
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8'
+    });
+
+    console.log(`[${new Date().toISOString()}] Navigating to ${url}`);
+    await page.goto(url, { 
+      waitUntil: 'networkidle2',
+      timeout: 30000 
+    });
+
+    // Extract content
+    const text = await extractPageText(page);
+    
+    console.log(`[${new Date().toISOString()}] Extracted ${text.length} characters`);
+    return text;
+
   } catch (error) {
-    console.error("Error fetching website:", error);
-    return "";
+    console.error("Error fetching website with Puppeteer:", error);
+    
+    // Fallback: Try axios if Puppeteer fails (redundancy)
+    try {
+      console.log("Falling back to simple fetch...");
+      const { default: axios } = await import("axios");
+      const { load } = await import("cheerio");
+      const { data } = await axios.get(url, { 
+        timeout: 5000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+        }
+      });
+      const $ = load(data);
+      $('script, style, noscript, iframe, svg, header, footer, nav').remove();
+      return $('body').text().replace(/\s+/g, ' ').trim().slice(0, 5000);
+    } catch (fallbackError) {
+      console.error("Fallback fetch failed:", fallbackError);
+      return "";
+    }
+  } finally {
+    if (browser) {
+      await browser.close();
+    }
   }
 }
 
