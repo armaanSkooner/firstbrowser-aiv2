@@ -95,6 +95,8 @@ export async function fetchWebsiteText(url: string): Promise<string> {
     }
   }
 }
+
+export async function scrapeBrandWebsite(brandUrl: string): Promise<ScrapedContent> {
   try {
     console.log(`[${new Date().toISOString()}] Scraping website: ${brandUrl}`);
     
