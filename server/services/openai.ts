@@ -1,10 +1,22 @@
 import OpenAI from "openai";
 import { fetchWebsiteText } from "./scraper";
 
+const isOpenRouter = !!process.env.OPENROUTER_API_KEY;
+const apiKey = process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR || "default_key";
+const baseURL = isOpenRouter ? "https://openrouter.ai/api/v1" : undefined;
+
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-const openai = new OpenAI({ 
-  apiKey: process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR || "default_key" 
+export const openai = new OpenAI({ 
+  apiKey,
+  baseURL,
+  defaultHeaders: isOpenRouter ? {
+    "HTTP-Referer": "https://firstbrowser.ai", // Optional, for including your app on openrouter.ai rankings.
+    "X-Title": "FirstBrowser AI", // Optional. Shows in rankings on openrouter.ai.
+  } : undefined,
 });
+
+// Use appropriate model name based on provider
+export const GPT_MODEL = isOpenRouter ? "openai/gpt-4o" : "gpt-4o";
 
 export interface PromptAnalysisResult {
   response: string;
@@ -57,7 +69,7 @@ export async function analyzePromptResponse(prompt: string): Promise<PromptAnaly
     // Generate response with retry logic
     const response = await callOpenAIWithRetry(() => 
       openai.chat.completions.create({
-        model: "gpt-4o",
+        model: GPT_MODEL,
         messages: [
           {
             role: "system",
@@ -150,7 +162,7 @@ export async function analyzePromptResponse(prompt: string): Promise<PromptAnaly
 
     const analysisResponse = await callOpenAIWithRetry(() =>
       openai.chat.completions.create({
-        model: "gpt-4o",
+        model: GPT_MODEL,
         messages: [
           {
             role: "system",
@@ -216,7 +228,7 @@ export async function generatePromptsForTopic(topicName: string, topicDescriptio
     
     try {
       const response = await openai.chat.completions.create({
-        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+        model: GPT_MODEL, // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
         messages: [
           {
             role: "system",
@@ -380,7 +392,7 @@ function calculateCompetitorSimilarity(competitor1: string, competitor2: string)
 export async function extractSourcesFromText(text: string): Promise<Array<{title: string; url: string; domain: string; snippet?: string}>> {
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: GPT_MODEL,
       messages: [
         {
           role: "system",
@@ -434,7 +446,7 @@ export async function extractCompetitorsFromText(text: string, brandName?: strin
     const brandContext = brandName ? `Focus on direct competitors to ${brandName}. ` : '';
     
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: GPT_MODEL,
       messages: [
         {
           role: "system",
@@ -503,7 +515,7 @@ export async function extractCompetitorsFromText(text: string, brandName?: strin
 export async function generateDynamicTopics(brandUrl: string, count: number, competitors: string[]): Promise<Array<{name: string, description: string}>> {
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: GPT_MODEL,
       messages: [
         {
           role: "system",
@@ -634,7 +646,7 @@ export async function analyzeBrandAndFindCompetitors(brandUrl: string): Promise<
         
         const response = await callOpenAIWithRetry(() =>
           openai.chat.completions.create({
-            model: "gpt-4o",
+            model: GPT_MODEL,
             messages: [
               {
                 role: "system",
