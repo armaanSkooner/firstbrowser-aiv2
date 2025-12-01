@@ -53,6 +53,18 @@ export const analytics = pgTable("analytics", {
   totalDomains: integer("total_domains").default(0),
 });
 
+export const brandInfo = pgTable("brand_info", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  url: text("url"),
+  description: text("description"),
+  industry: text("industry"),
+  employeeCount: text("employee_count"),
+  features: text("features").array(),
+  services: text("services").array(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Insert schemas
 export const insertTopicSchema = createInsertSchema(topics).omit({
   id: true,
@@ -84,6 +96,11 @@ export const insertAnalyticsSchema = createInsertSchema(analytics).omit({
   date: true,
 });
 
+export const insertBrandInfoSchema = createInsertSchema(brandInfo).omit({
+  id: true,
+  updatedAt: true,
+});
+
 // Types
 export type Topic = typeof topics.$inferSelect;
 export type InsertTopic = z.infer<typeof insertTopicSchema>;
@@ -102,6 +119,9 @@ export type InsertSource = z.infer<typeof insertSourceSchema>;
 
 export type Analytics = typeof analytics.$inferSelect;
 export type InsertAnalytics = z.infer<typeof insertAnalyticsSchema>;
+
+export type BrandInfo = typeof brandInfo.$inferSelect;
+export type InsertBrandInfo = z.infer<typeof insertBrandInfoSchema>;
 
 // Extended types for API responses
 export type PromptWithTopic = Prompt & { topic: Topic | null };

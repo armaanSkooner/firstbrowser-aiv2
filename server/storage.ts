@@ -73,6 +73,10 @@ export interface IStorage {
   clearAllPrompts(): Promise<void>;
   clearAllResponses(): Promise<void>;
   clearAllCompetitors(): Promise<void>;
+
+  // Brand Info
+  getBrandInfo(): Promise<BrandInfo | undefined>;
+  saveBrandInfo(info: InsertBrandInfo): Promise<BrandInfo>;
 }
 
 export class MemStorage implements IStorage {
@@ -82,6 +86,7 @@ export class MemStorage implements IStorage {
   private competitors: Map<number, Competitor> = new Map();
   private sources: Map<number, Source> = new Map();
   private analytics: Map<number, Analytics> = new Map();
+  private brandInfo: Map<number, BrandInfo> = new Map();
   
   private currentTopicId = 1;
   private currentPromptId = 1;
@@ -89,6 +94,7 @@ export class MemStorage implements IStorage {
   private currentCompetitorId = 1;
   private currentSourceId = 1;
   private currentAnalyticsId = 1;
+  private currentBrandInfoId = 1;
 
   constructor() {
     // Initialize only basic reference data - no sample prompts/responses
@@ -370,6 +376,27 @@ export class MemStorage implements IStorage {
     this.competitors.clear();
     this.currentCompetitorId = 1;
     console.log(`[${new Date().toISOString()}] MemStorage: All competitors cleared successfully`);
+  }
+
+  async getBrandInfo(): Promise<BrandInfo | undefined> {
+    const allInfo = Array.from(this.brandInfo.values());
+    return allInfo.sort((a, b) => new Date(b.updatedAt!).getTime() - new Date(a.updatedAt!).getTime())[0];
+  }
+
+  async saveBrandInfo(info: InsertBrandInfo): Promise<BrandInfo> {
+    const newInfo: BrandInfo = {
+      id: this.currentBrandInfoId++,
+      name: info.name,
+      url: info.url || null,
+      description: info.description || null,
+      industry: info.industry || null,
+      employeeCount: info.employeeCount || null,
+      features: info.features || null,
+      services: info.services || null,
+      updatedAt: new Date()
+    };
+    this.brandInfo.set(newInfo.id, newInfo);
+    return newInfo;
   }
 
   async getLatestResponses(): Promise<ResponseWithPrompt[]> {

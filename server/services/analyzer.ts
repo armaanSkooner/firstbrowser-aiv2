@@ -7,7 +7,8 @@ import type {
   Analytics,
   TopicAnalysis,
   CompetitorAnalysis,
-  SourceAnalysis 
+  SourceAnalysis,
+  BrandInfo
 } from "@shared/schema";
 
 export interface AnalysisProgress {
@@ -184,6 +185,24 @@ export class BrandAnalyzer {
         });
 
         const content = await scrapeBrandWebsite(this.brandUrl || 'https://example.com');
+        
+        // Save scraped brand info to database
+        if (this.brandUrl) {
+          try {
+            await storage.saveBrandInfo({
+              name: this.brandName,
+              url: this.brandUrl,
+              description: content.description,
+              industry: content.industry,
+              employeeCount: content.employeeCount,
+              features: content.features,
+              services: content.services
+            });
+            console.log(`[${new Date().toISOString()}] Saved brand info for ${this.brandName}`);
+          } catch (error) {
+            console.error(`[${new Date().toISOString()}] Error saving brand info:`, error);
+          }
+        }
         
         // Also analyze competitors early for better context
         if (this.brandUrl) {

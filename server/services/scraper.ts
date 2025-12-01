@@ -5,6 +5,8 @@ import { openai, GPT_MODEL } from "./openai";
 export interface ScrapedContent {
   title: string;
   description: string;
+  industry?: string;
+  employeeCount?: string;
   features: string[];
   services: string[];
 }
@@ -135,6 +137,8 @@ Return a JSON object with:
 {
   "title": "Company name or main heading",
   "description": "One sentence describing what this company does",
+  "industry": "The specific industry sector (e.g., 'Fintech', 'E-commerce', 'Healthcare')",
+  "employeeCount": "Estimated employee count range if mentioned (e.g., '10-50', '100+', '1000+'), otherwise null",
   "features": ["Key feature 1", "Key feature 2", ...], // 3-5 main features/capabilities
   "services": ["Service/product 1", "Service/product 2", ...] // 3-5 main services/products
 }
@@ -157,6 +161,8 @@ Be specific and use the actual services/features mentioned on the website.`;
     return {
       title: result.title || 'Unknown Company',
       description: result.description || '',
+      industry: result.industry,
+      employeeCount: result.employeeCount,
       features: result.features || [],
       services: result.services || []
     };

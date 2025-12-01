@@ -57,6 +57,17 @@ interface SourceAnalysis {
   citationRate: number;
 }
 
+interface BrandInfo {
+  name: string;
+  url?: string;
+  description?: string;
+  industry?: string;
+  employeeCount?: string;
+  features?: string[];
+  services?: string[];
+}
+
+
 export default function ResultsPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -67,6 +78,10 @@ export default function ResultsPage() {
 
   const { data: metrics, refetch: refetchMetrics } = useQuery<Metrics>({
     queryKey: ["/api/metrics"],
+  });
+
+  const { data: brandInfo, refetch: refetchBrandInfo } = useQuery<BrandInfo>({
+    queryKey: ["/api/brand-info"],
   });
 
   const { data: counts } = useQuery<any>({
@@ -126,6 +141,7 @@ export default function ResultsPage() {
               setIsAnalyzing(false);
               setHasData(true);
               await refetchMetrics();
+              await refetchBrandInfo();
               toast({
                 title: "Analysis Complete",
                 description: "Brand analysis finished successfully!",
@@ -155,8 +171,8 @@ export default function ResultsPage() {
   };
 
   // Calculate scores (simplified - can be made more sophisticated)
-  const aeoScore = hasData ? Math.round((metrics?.brandMentionRate || 0) * 0.5 + 25) : 0;
-  const geoScore = hasData ? Math.round(Math.random() * 30 + 70) : 0; // Placeholder for now
+  const aeoScore = hasData ? Math.round((metrics?.brandMentionRate || 0) * 0.8 + 20) : 0;
+  const geoScore = 0; // GEO data not yet available
 
   const totalPrompts = counts?.totalPrompts || 0;
   const brandMentions = counts?.brandMentions || 0;
@@ -173,11 +189,24 @@ export default function ResultsPage() {
   // Calculate potential sales impact
   const potentialImpact = topCompetitorData ? Math.round((topCompetitorData.mentionRate - (metrics?.brandMentionRate || 0)) * 20) : 0;
 
-  // Count AI engines (for now, just showing ChatGPT and Perplexity as examples)
-  const aiEngines = [
-    { name: "ChatGPT", example: "executive search firms in Canada", status: "Mentioned", lastSeen: "2025-10-15" },
-    { name: "Perplexity", example: "boutique executive search firm", status: "Mentioned", lastSeen: "2025-10-05" }
+  // Count AI engines based on actual sources found
+  const knownEngines = [
+    { name: "ChatGPT", domain: "openai.com" },
+    { name: "Perplexity", domain: "perplexity.ai" },
+    { name: "Claude", domain: "anthropic.com" },
+    { name: "Google Gemini", domain: "google.com" },
+    { name: "Bing Chat", domain: "bing.com" }
   ];
+
+  const aiEngines = knownEngines.map(engine => {
+    const source = sources?.find(s => s.domain.includes(engine.domain));
+    return {
+      name: engine.name,
+      status: source ? "Mentioned" : "Not Detected",
+      lastSeen: source ? "Recently" : "-",
+      example: source ? "Found in sources" : "No data yet"
+    };
+  });
 
   const sortedCompetitors = competitors?.sort((a, b) => b.mentionRate - a.mentionRate).slice(0, 5) || [];
 
@@ -221,10 +250,14 @@ export default function ResultsPage() {
                   </Link>
                 )}
                 <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <Badge variant="outline" className="text-xs">
-                    Executive Search / Recruitment
-                  </Badge>
-                  <span>10-50 employees</span>
+                  {brandInfo?.industry && (
+                    <Badge variant="outline" className="text-xs">
+                      {brandInfo.industry}
+                    </Badge>
+                  )}
+                  {brandInfo?.employeeCount && (
+                    <span>{brandInfo.employeeCount} employees</span>
+                  )}
                 </div>
               </div>
               <div className="flex gap-4">
@@ -473,22 +506,25 @@ export default function ResultsPage() {
                         <thead>
                           <tr className="border-b">
                             <th className="text-left py-3 font-medium text-gray-700">Engine</th>
-                            <th className="text-left py-3 font-medium text-gray-700">Example query</th>
                             <th className="text-center py-3 font-medium text-gray-700">Appearance</th>
-                            <th className="text-right py-3 font-medium text-gray-700">Last seen</th>
+                            <th className="text-right py-3 font-medium text-gray-700">Notes</th>
                           </tr>
                         </thead>
                         <tbody>
                           {aiEngines.map((engine, idx) => (
                             <tr key={idx} className="border-b last:border-0">
                               <td className="py-3 font-medium text-gray-900">{engine.name}</td>
-                              <td className="py-3 text-gray-600">{engine.example}</td>
                               <td className="py-3 text-center">
-                                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                <Badge 
+                                  variant="outline" 
+                                  className={engine.status === "Mentioned" 
+                                    ? "bg-green-50 text-green-700 border-green-200" 
+                                    : "bg-gray-50 text-gray-500 border-gray-200"}
+                                >
                                   {engine.status}
                                 </Badge>
                               </td>
-                              <td className="py-3 text-right text-gray-600">{engine.lastSeen}</td>
+                              <td className="py-3 text-right text-gray-600">{engine.example}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -520,32 +556,12 @@ export default function ResultsPage() {
                   <CardTitle className="text-lg">Local & GEO presence</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-gray-500 mb-4">[Map placeholder – geographic distribution of locations and ratings]</p>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left py-3 font-medium text-gray-700">Country</th>
-                          <th className="text-left py-3 font-medium text-gray-700">Cities</th>
-                          <th className="text-center py-3 font-medium text-gray-700">Avg rating</th>
-                          <th className="text-right py-3 font-medium text-gray-700">Review count</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr className="border-b">
-                          <td className="py-3 font-medium text-gray-900">Canada</td>
-                          <td className="py-3 text-gray-600">7</td>
-                          <td className="py-3 text-center text-gray-600">4.8</td>
-                          <td className="py-3 text-right text-gray-600">50</td>
-                        </tr>
-                        <tr>
-                          <td className="py-3 font-medium text-gray-900">United States</td>
-                          <td className="py-3 text-gray-600">3</td>
-                          <td className="py-3 text-center text-gray-600">4.7</td>
-                          <td className="py-3 text-right text-gray-600">30</td>
-                        </tr>
-                      </tbody>
-                    </table>
+                  <div className="text-center py-8 text-gray-500">
+                    <Globe className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+                    <p className="text-lg font-medium text-gray-900">Local SEO Analysis Coming Soon</p>
+                    <p className="text-sm max-w-md mx-auto mt-2">
+                      Detailed local ranking data, Google Maps visibility, and review sentiment analysis will be available in the next update.
+                    </p>
                   </div>
                 </CardContent>
               </Card>

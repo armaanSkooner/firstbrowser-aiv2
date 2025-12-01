@@ -5,8 +5,9 @@ import {
   Competitor, InsertCompetitor,
   Source, InsertSource,
   Analytics, InsertAnalytics,
+  BrandInfo, InsertBrandInfo,
   TopicAnalysis, CompetitorAnalysis, SourceAnalysis,
-  topics, prompts, responses, competitors, sources, analytics
+  topics, prompts, responses, competitors, sources, analytics, brandInfo
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, count, sql } from "drizzle-orm";
@@ -267,5 +268,20 @@ export class DatabaseStorage implements IStorage {
     console.log(`[${new Date().toISOString()}] DatabaseStorage: Clearing all competitors...`);
     await db.delete(competitors);
     console.log(`[${new Date().toISOString()}] DatabaseStorage: All competitors cleared successfully`);
+  }
+
+  // Brand Info
+  async getBrandInfo(): Promise<BrandInfo | undefined> {
+    const [info] = await db
+      .select()
+      .from(brandInfo)
+      .orderBy(desc(brandInfo.updatedAt))
+      .limit(1);
+    return info || undefined;
+  }
+
+  async saveBrandInfo(info: InsertBrandInfo): Promise<BrandInfo> {
+    const [created] = await db.insert(brandInfo).values(info).returning();
+    return created;
   }
 }

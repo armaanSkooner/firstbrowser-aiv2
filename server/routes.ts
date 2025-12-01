@@ -70,6 +70,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Brand Info endpoint
+  app.get("/api/brand-info", async (req, res) => {
+    try {
+      const info = await storage.getBrandInfo();
+      res.json(info || null);
+    } catch (error) {
+      console.error("Error fetching brand info:", error);
+      res.status(500).json({ error: "Failed to fetch brand info" });
+    }
+  });
+
   // Total counts endpoint for accurate statistics
   app.get("/api/counts", async (req, res) => {
     try {
