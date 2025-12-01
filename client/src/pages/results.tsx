@@ -19,7 +19,8 @@ import {
   CheckCircle2,
   Users,
   Target,
-  BarChart3
+  BarChart3,
+  Settings
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -228,7 +229,12 @@ export default function ResultsPage() {
             <h1 className="text-2xl font-bold text-gray-900">{brandName || 'Company Analysis'}</h1>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-500">Demo environment</span>
+            <Link href="/settings">
+              <Button variant="outline" size="sm" className="gap-2">
+                <Settings className="h-4 w-4" />
+                Settings
+              </Button>
+            </Link>
           </div>
         </div>
       </div>

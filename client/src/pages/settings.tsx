@@ -6,7 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Settings, Key, Save, CheckCircle, XCircle } from "lucide-react";
+import { Settings, Key, Save, CheckCircle, XCircle, Trash2, AlertTriangle, ArrowLeft } from "lucide-react";
+import { Link } from "wouter";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function SettingsPage() {
   const [apiKey, setApiKey] = useState("");
@@ -15,7 +17,36 @@ export default function SettingsPage() {
   const [promptsPerTopic, setPromptsPerTopic] = useState("5");
   const [analysisFrequency, setAnalysisFrequency] = useState("manual");
   const [isSavingConfig, setIsSavingConfig] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
   const { toast } = useToast();
+
+  const handleClearData = async () => {
+    if (!confirm("Are you sure you want to clear ALL analysis data? This cannot be undone.")) {
+      return;
+    }
+
+    setIsClearing(true);
+    try {
+      const response = await apiRequest("POST", "/api/data/clear", { type: 'all' });
+      
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "All analysis data has been cleared.",
+        });
+      } else {
+        throw new Error("Failed to clear data");
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to clear data. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsClearing(false);
+    }
+  };
 
   const handleSaveApiKey = async () => {
     if (!apiKey.trim()) {
@@ -119,17 +150,59 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Settings className="h-8 w-8 text-blue-600" />
-        <div>
-          <h1 className="text-2xl font-bold">Settings</h1>
-          <p className="text-gray-600">Configure your brand tracker</p>
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-4xl mx-auto space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Link href="/results">
+              <Button variant="ghost" size="sm">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back
+              </Button>
+            </Link>
+            <div className="h-6 w-px bg-gray-300" />
+            <Settings className="h-6 w-6 text-gray-600" />
+            <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
+          </div>
         </div>
-      </div>
 
-      <div className="grid gap-6 max-w-2xl">
-        <Card>
+        <div className="grid gap-6">
+          {/* Data Management Card */}
+          <Card className="border-red-200">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-red-700">
+                <Trash2 className="h-5 w-5" />
+                Data Management
+              </CardTitle>
+              <p className="text-sm text-gray-600">
+                Manage your analysis data and reset the system
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="bg-red-50 p-4 rounded-lg border border-red-100 mb-4">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
+                  <div>
+                    <h4 className="font-medium text-red-900">Clear All Data</h4>
+                    <p className="text-sm text-red-800 mt-1">
+                      This will permanently delete all analysis results, competitors, and metrics. 
+                      Use this if you want to start fresh with a clean slate.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <Button 
+                variant="destructive" 
+                onClick={handleClearData}
+                disabled={isClearing}
+                className="w-full sm:w-auto"
+              >
+                {isClearing ? 'Clearing...' : 'Clear All Data'}
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Key className="h-5 w-5" />
@@ -233,7 +306,8 @@ export default function SettingsPage() {
               </Button>
             </div>
           </CardContent>
-        </Card>
+          </Card>
+        </div>
       </div>
     </div>
   );
