@@ -231,6 +231,7 @@ Make topics SPECIFIC to this company's industry, not generic.`;
       return topics;
     }
 
+    console.warn(`[${new Date().toISOString()}] AI generated topics but format was invalid or empty:`, JSON.stringify(topics).substring(0, 200));
     // Fallback to generic topics if AI generation fails
     console.log(`[${new Date().toISOString()}] Falling back to generic topics`);
     return [
@@ -243,6 +244,9 @@ Make topics SPECIFIC to this company's industry, not generic.`;
 
   } catch (error) {
     console.error(`[${new Date().toISOString()}] Error generating topics:`, error);
+    if (error instanceof Error) {
+      console.error(`[${new Date().toISOString()}] Stack trace:`, error.stack);
+    }
     // Fallback topics
     return [
       { name: "Market Solutions", description: "Analysis of solutions in the company's market segment" },
