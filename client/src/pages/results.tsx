@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation, Link } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -17,13 +17,15 @@ import {
   ExternalLink,
   AlertCircle,
   CheckCircle2,
-  Users,
   Target,
-  BarChart3,
-  Settings
+  Settings,
+  PlayCircle,
+  Search,
+  Share2
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { motion } from "framer-motion";
 
 interface Metrics {
   brandMentionRate: number;
@@ -68,7 +70,6 @@ interface BrandInfo {
   services?: string[];
 }
 
-
 export default function ResultsPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -102,7 +103,6 @@ export default function ResultsPage() {
   });
 
   useEffect(() => {
-    // Check if we have any data
     const hasAnalysisData = counts?.totalPrompts > 0;
     setHasData(hasAnalysisData);
   }, [counts]);
@@ -131,7 +131,6 @@ export default function ResultsPage() {
           description: "Brand analysis is running in the background. This may take 5-10 minutes.",
         });
         
-        // Poll for completion
         const pollInterval = setInterval(async () => {
           try {
             const countsResponse = await fetch('/api/counts');
@@ -153,7 +152,6 @@ export default function ResultsPage() {
           }
         }, 3000);
         
-        // Stop polling after 10 minutes
         setTimeout(() => {
           clearInterval(pollInterval);
           if (isAnalyzing) {
@@ -171,26 +169,19 @@ export default function ResultsPage() {
     }
   };
 
-  // Calculate scores (simplified - can be made more sophisticated)
   const aeoScore = hasData ? Math.round((metrics?.brandMentionRate || 0) * 0.8 + 20) : 0;
-  const geoScore = 0; // GEO data not yet available
+  const geoScore = 0;
 
   const totalPrompts = counts?.totalPrompts || 0;
   const brandMentions = counts?.brandMentions || 0;
   const topCompetitorData = competitors?.find(c => c.name === metrics?.topCompetitor);
-
-  // Get top queries (topics with highest mention rates)
   const topQueries = topics?.sort((a, b) => b.mentionRate - a.mentionRate).slice(0, 2) || [];
 
-  // Calculate citations present vs missing
-  const totalPossibleCitations = 4; // Simplified
+  const totalPossibleCitations = 4;
   const citationsPresent = Math.min(sources?.length || 0, totalPossibleCitations);
   const citationsMissing = totalPossibleCitations - citationsPresent;
-
-  // Calculate potential sales impact
   const potentialImpact = topCompetitorData ? Math.round((topCompetitorData.mentionRate - (metrics?.brandMentionRate || 0)) * 20) : 0;
 
-  // Count AI engines based on actual sources found
   const knownEngines = [
     { name: "ChatGPT", domain: "openai.com" },
     { name: "Perplexity", domain: "perplexity.ai" },
@@ -211,482 +202,415 @@ export default function ResultsPage() {
 
   const sortedCompetitors = competitors?.sort((a, b) => b.mentionRate - a.mentionRate).slice(0, 5) || [];
 
+  const container = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const item = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0 }
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+    <div className="min-h-screen bg-slate-50/50 font-sans">
+      {/* Modern Header with Blur */}
+      <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200">
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setLocation('/')}
-            >
+            <Button variant="ghost" size="sm" onClick={() => setLocation('/')} className="text-slate-600 hover:text-slate-900 hover:bg-slate-100/50">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Search
+              Back
             </Button>
-            <div className="h-6 w-px bg-gray-300" />
-            <h1 className="text-2xl font-bold text-gray-900">{brandName || 'Company Analysis'}</h1>
+            <div className="h-6 w-px bg-slate-200" />
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Building2 className="h-4 w-4 text-primary" />
+              </div>
+              <h1 className="text-lg font-semibold text-slate-900">{brandName || 'Company Analysis'}</h1>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
+          
+          <div className="flex items-center gap-3">
+            {hasData && (
+              <Button variant="outline" size="sm" onClick={handleRunAnalysis} disabled={isAnalyzing} className="hidden sm:flex gap-2">
+                <PlayCircle className="h-4 w-4" />
+                {isAnalyzing ? 'Running...' : 'Refresh Analysis'}
+              </Button>
+            )}
             <Link href="/settings">
-              <Button variant="outline" size="sm" className="gap-2">
+              <Button variant="ghost" size="sm" className="gap-2 text-slate-600">
                 <Settings className="h-4 w-4" />
-                Settings
               </Button>
             </Link>
           </div>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-6 py-8 space-y-6">
-        {/* Company Header Card */}
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <h2 className="text-3xl font-bold text-gray-900">{brandName}</h2>
-                {brandUrl && (
-                  <Link href={brandUrl.includes('http') ? brandUrl : `https://${brandUrl}`}>
-                    <a className="text-blue-600 hover:underline flex items-center gap-1 text-sm" target="_blank">
-                      {brandUrl}
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
-                  </Link>
+      <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+        {/* Hero Section */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="relative overflow-hidden rounded-2xl bg-white border border-slate-200 shadow-sm"
+        >
+          <div className="absolute top-0 right-0 p-4 opacity-10">
+            <Sparkles className="w-64 h-64 text-primary" />
+          </div>
+          
+          <div className="p-8 relative z-10">
+            <div className="flex flex-col md:flex-row justify-between gap-8">
+              <div className="space-y-4">
+                <div>
+                  <h2 className="text-4xl font-bold tracking-tight text-slate-900 mb-2">{brandName}</h2>
+                  <div className="flex flex-wrap items-center gap-3 text-slate-600">
+                    {brandUrl && (
+                      <a href={brandUrl.includes('http') ? brandUrl : `https://${brandUrl}`} target="_blank" rel="noreferrer" className="flex items-center hover:text-primary transition-colors">
+                        <Globe className="h-4 w-4 mr-1.5" />
+                        {brandUrl}
+                      </a>
+                    )}
+                    {brandInfo?.industry && (
+                      <>
+                        <span className="h-1 w-1 rounded-full bg-slate-300" />
+                        <span>{brandInfo.industry}</span>
+                      </>
+                    )}
+                    {brandInfo?.employeeCount && (
+                      <>
+                        <span className="h-1 w-1 rounded-full bg-slate-300" />
+                        <span>{brandInfo.employeeCount} employees</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                
+                {brandInfo?.description && (
+                  <p className="text-slate-600 max-w-2xl leading-relaxed">
+                    {brandInfo.description}
+                  </p>
                 )}
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  {brandInfo?.industry && (
-                    <Badge variant="outline" className="text-xs">
-                      {brandInfo.industry}
-                    </Badge>
-                  )}
-                  {brandInfo?.employeeCount && (
-                    <span>{brandInfo.employeeCount} employees</span>
-                  )}
-                </div>
+
+                {brandInfo?.features && brandInfo.features.length > 0 && (
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    {brandInfo.features.slice(0, 4).map((feature, i) => (
+                      <Badge key={i} variant="secondary" className="bg-slate-100 text-slate-700 hover:bg-slate-200">
+                        {feature}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
               </div>
-              <div className="flex gap-4">
-                <div className="text-center">
-                  <div className="text-xs text-gray-500 mb-1">AEO Score</div>
-                  <div className="text-4xl font-bold text-blue-600">{aeoScore}</div>
+
+              <div className="flex gap-6 min-w-[200px]">
+                <div className="flex-1 p-4 rounded-xl bg-slate-50 border border-slate-100 flex flex-col items-center justify-center text-center">
+                  <div className="text-sm font-medium text-slate-500 mb-1">AEO Score</div>
+                  <div className="text-5xl font-bold text-primary tracking-tight">{aeoScore}</div>
+                  <div className="text-xs text-slate-400 mt-1">/ 100</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-xs text-gray-500 mb-1">GEO Score</div>
-                  <div className="text-4xl font-bold text-indigo-600">{geoScore}</div>
+                <div className="flex-1 p-4 rounded-xl bg-slate-50 border border-slate-100 flex flex-col items-center justify-center text-center opacity-50">
+                  <div className="text-sm font-medium text-slate-500 mb-1">GEO Score</div>
+                  <div className="text-5xl font-bold text-slate-400 tracking-tight">--</div>
+                  <div className="text-xs text-slate-400 mt-1">Coming Soon</div>
                 </div>
               </div>
             </div>
-
-            {!hasData && (
-              <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-amber-900">No Analysis Data Available</p>
-                    <p className="text-sm text-amber-700 mt-1">
-                      Run an analysis to see visibility metrics, competitor insights, and more.
-                    </p>
-                    <Button 
-                      onClick={handleRunAnalysis} 
-                      disabled={isAnalyzing}
-                      className="mt-3"
-                      size="sm"
-                    >
-                      {isAnalyzing ? 'Running Analysis...' : 'Run Analysis Now'}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Key Metrics Grid */}
-        {hasData && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Answer engine visibility</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-2">
-                      {aiEngines.length} engines tracked
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      AEO Score is based on coverage, prominence, freshness and accuracy.
-                    </p>
-                  </div>
-                  <div className="bg-blue-100 p-2 rounded-lg">
-                    <Sparkles className="h-5 w-5 text-blue-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-600">Top queries</p>
-                    <ul className="mt-2 space-y-1">
-                      {topQueries.map((topic, idx) => (
-                        <li key={idx} className="text-xs text-gray-700">• "{topic.topicName}"</li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div className="bg-purple-100 p-2 rounded-lg">
-                    <MessageSquare className="h-5 w-5 text-purple-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Local footprint</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-2">2 countries</p>
-                    <p className="text-xs text-gray-500 mt-1">Avg rating: 4.8/5</p>
-                  </div>
-                  <div className="bg-green-100 p-2 rounded-lg">
-                    <Globe className="h-5 w-5 text-green-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Citations missing</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-2">
-                      {citationsMissing} missing / {totalPossibleCitations}
-                    </p>
-                    <div className="mt-2">
-                      <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
-                        Present in {citationsPresent} engines
-                      </Badge>
-                    </div>
-                  </div>
-                  <div className="bg-amber-100 p-2 rounded-lg">
-                    <Target className="h-5 w-5 text-amber-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
           </div>
-        )}
+        </motion.div>
 
-        {/* Tabs for Different Views */}
-        {hasData && (
-          <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="engines">Answer Engines</TabsTrigger>
-              <TabsTrigger value="geo">Local & GEO</TabsTrigger>
-              <TabsTrigger value="competitors">Competitors</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="overview" className="space-y-6">
-              {/* Why This Matters & Potential Impact */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Why this matters</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex items-start gap-3">
-                      <CheckCircle2 className="h-5 w-5 text-blue-600 mt-0.5" />
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">AEO = how AI answers talk about you</p>
-                        <p className="text-xs text-gray-600">Higher visibility means more brand awareness</p>
+        {!hasData ? (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-12 text-center"
+          >
+            <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+              <Search className="h-6 w-6 text-primary" />
+            </div>
+            <h3 className="text-lg font-semibold text-slate-900">No Analysis Data Yet</h3>
+            <p className="text-slate-500 max-w-md mx-auto mt-2 mb-6">
+              Start your first analysis to uncover how Answer Engines perceive your brand compared to competitors.
+            </p>
+            <Button onClick={handleRunAnalysis} disabled={isAnalyzing} size="lg" className="gap-2">
+              {isAnalyzing ? <span className="loading loading-spinner loading-sm"></span> : <PlayCircle className="h-5 w-5" />}
+              {isAnalyzing ? 'Running Analysis...' : 'Start Analysis Now'}
+            </Button>
+          </motion.div>
+        ) : (
+          <motion.div 
+            variants={container}
+            initial="hidden"
+            animate="show"
+            className="space-y-8"
+          >
+            {/* Key Metrics Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <motion.div variants={item}>
+                <Card className="h-full hover:shadow-md transition-shadow">
+                  <CardContent className="p-6">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="p-2 bg-blue-50 rounded-lg">
+                        <Sparkles className="h-5 w-5 text-blue-600" />
                       </div>
+                      <Badge variant="outline" className="text-xs">Visibility</Badge>
                     </div>
-                    <div className="flex items-start gap-3">
-                      <CheckCircle2 className="h-5 w-5 text-indigo-600 mt-0.5" />
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">GEO = how buyers find you on the ground</p>
-                        <p className="text-xs text-gray-600">Local presence drives trust and conversions</p>
-                      </div>
+                    <div className="space-y-1">
+                      <h3 className="text-2xl font-bold text-slate-900">{aiEngines.filter(e => e.status === "Mentioned").length} / {aiEngines.length}</h3>
+                      <p className="text-sm font-medium text-slate-600">Engines Tracked</p>
                     </div>
-                    <div className="flex items-start gap-3">
-                      <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5" />
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">Both feed into pipeline, brand, and trust</p>
-                        <p className="text-xs text-gray-600">Optimize both for maximum impact</p>
-                      </div>
-                    </div>
+                    <p className="text-xs text-slate-500 mt-4">
+                      Presence across major AI platforms
+                    </p>
                   </CardContent>
                 </Card>
+              </motion.div>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Potential sales impact</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center py-6">
-                      <div className="text-5xl font-bold text-blue-600 mb-2">{potentialImpact}</div>
-                      <p className="text-sm text-gray-600 mb-4">
-                        You lose <span className="font-semibold">{potentialImpact}</span> vs competitor ({topCompetitorData?.name || 'Top'})
-                      </p>
-                      <div className="text-xs text-gray-500">
-                        Based on {(topCompetitorData?.mentionRate || 0).toFixed(1)}% competitor visibility vs{" "}
-                        {(metrics?.brandMentionRate || 0).toFixed(1)}% yours
+              <motion.div variants={item}>
+                <Card className="h-full hover:shadow-md transition-shadow">
+                  <CardContent className="p-6">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="p-2 bg-purple-50 rounded-lg">
+                        <MessageSquare className="h-5 w-5 text-purple-600" />
                       </div>
+                      <Badge variant="outline" className="text-xs">Mentions</Badge>
                     </div>
+                    <div className="space-y-1">
+                      <h3 className="text-2xl font-bold text-slate-900">{metrics?.brandMentionRate.toFixed(1)}%</h3>
+                      <p className="text-sm font-medium text-slate-600">Share of Voice</p>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-4">
+                      Frequency in AI-generated responses
+                    </p>
                   </CardContent>
                 </Card>
-              </div>
+              </motion.div>
 
-              {/* High-level Summary */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">High-level summary</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <p className="text-sm text-gray-700">
-                    • <span className="font-medium">{brandName}</span> appears in{" "}
-                    <span className="font-semibold text-blue-600">{brandMentions}/{totalPrompts}</span> tested prompts
-                    ({(metrics?.brandMentionRate || 0).toFixed(1)}% mention rate)
-                  </p>
-                  <p className="text-sm text-gray-700">
-                    • Top competitor <span className="font-semibold">{topCompetitorData?.name || 'Unknown'}</span> has{" "}
-                    <span className="font-semibold text-amber-600">{(topCompetitorData?.mentionRate || 0).toFixed(1)}%</span> mention rate
-                  </p>
-                  <p className="text-sm text-gray-700">
-                    • Present in <span className="font-semibold text-green-600">{citationsPresent}</span> engines,
-                    missing from <span className="font-semibold text-red-600">{citationsMissing}</span>
-                  </p>
-                  <p className="text-sm text-gray-700">
-                    • <span className="font-semibold">{sources?.length || 0}</span> different sources cited across{" "}
-                    {metrics?.totalDomains || 0} domains
-                  </p>
-                </CardContent>
-              </Card>
+              <motion.div variants={item}>
+                <Card className="h-full hover:shadow-md transition-shadow">
+                  <CardContent className="p-6">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="p-2 bg-amber-50 rounded-lg">
+                        <Target className="h-5 w-5 text-amber-600" />
+                      </div>
+                      <Badge variant="outline" className="text-xs">Gap</Badge>
+                    </div>
+                    <div className="space-y-1">
+                      <h3 className="text-2xl font-bold text-slate-900">{citationsMissing}</h3>
+                      <p className="text-sm font-medium text-slate-600">Missing Citations</p>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-4">
+                      Key sources where you're not cited
+                    </p>
+                  </CardContent>
+                </Card>
+              </motion.div>
 
-              {/* Top Competitors Quick View */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Competitive landscape</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {sortedCompetitors.map((competitor, idx) => (
-                      <div key={competitor.competitorId} className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm font-medium text-gray-500 w-6">#{idx + 1}</span>
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">{competitor.name}</p>
-                            {competitor.category && (
-                              <p className="text-xs text-gray-500">{competitor.category}</p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm font-semibold text-gray-900">
-                            {competitor.mentionRate.toFixed(1)}%
-                          </span>
-                          <div className="w-24">
+              <motion.div variants={item}>
+                <Card className="h-full hover:shadow-md transition-shadow">
+                  <CardContent className="p-6">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="p-2 bg-green-50 rounded-lg">
+                        <Share2 className="h-5 w-5 text-green-600" />
+                      </div>
+                      <Badge variant="outline" className="text-xs">Reach</Badge>
+                    </div>
+                    <div className="space-y-1">
+                      <h3 className="text-2xl font-bold text-slate-900">{metrics?.totalSources}</h3>
+                      <p className="text-sm font-medium text-slate-600">Total Sources</p>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-4">
+                      Unique domains citing your brand
+                    </p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </div>
+
+            <Tabs defaultValue="overview" className="space-y-8">
+              <TabsList className="bg-white p-1 border border-slate-200 rounded-lg w-full justify-start overflow-x-auto">
+                <TabsTrigger value="overview" className="data-[state=active]:bg-slate-100">Overview</TabsTrigger>
+                <TabsTrigger value="engines" className="data-[state=active]:bg-slate-100">Answer Engines</TabsTrigger>
+                <TabsTrigger value="competitors" className="data-[state=active]:bg-slate-100">Competitors</TabsTrigger>
+                <TabsTrigger value="geo" className="data-[state=active]:bg-slate-100">Local & GEO</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="overview" className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <Card className="lg:col-span-2">
+                    <CardHeader>
+                      <CardTitle>Competitive Landscape</CardTitle>
+                      <CardDescription>How you stack up against identified competitors in AI responses</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-6">
+                        {sortedCompetitors.map((competitor, idx) => (
+                          <div key={competitor.competitorId} className="space-y-2">
+                            <div className="flex items-center justify-between text-sm">
+                              <div className="flex items-center gap-3">
+                                <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-xs font-medium text-slate-600">
+                                  {idx + 1}
+                                </div>
+                                <span className="font-medium text-slate-900">{competitor.name}</span>
+                                {competitor.category && (
+                                  <span className="text-xs text-slate-500 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">
+                                    {competitor.category}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <span className="font-semibold text-slate-900">{competitor.mentionRate.toFixed(1)}%</span>
+                                {competitor.changeRate > 0 ? (
+                                  <span className="text-xs text-red-500 flex items-center">
+                                    <TrendingUp className="h-3 w-3 mr-0.5" />
+                                    {competitor.changeRate}%
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-green-500 flex items-center">
+                                    <TrendingDown className="h-3 w-3 mr-0.5" />
+                                    {Math.abs(competitor.changeRate)}%
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                             <Progress value={competitor.mentionRate} className="h-2" />
                           </div>
-                        </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
+                    </CardContent>
+                  </Card>
 
-            <TabsContent value="engines" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Answer engine presence</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b">
-                            <th className="text-left py-3 font-medium text-gray-700">Engine</th>
-                            <th className="text-center py-3 font-medium text-gray-700">Appearance</th>
-                            <th className="text-right py-3 font-medium text-gray-700">Notes</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {aiEngines.map((engine, idx) => (
-                            <tr key={idx} className="border-b last:border-0">
-                              <td className="py-3 font-medium text-gray-900">{engine.name}</td>
-                              <td className="py-3 text-center">
-                                <Badge 
-                                  variant="outline" 
-                                  className={engine.status === "Mentioned" 
-                                    ? "bg-green-50 text-green-700 border-green-200" 
-                                    : "bg-gray-50 text-gray-500 border-gray-200"}
-                                >
-                                  {engine.status}
+                  <div className="space-y-6">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Top Queries</CardTitle>
+                        <CardDescription>Where your brand appears most</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          {topQueries.map((topic, idx) => (
+                            <div key={idx} className="p-3 rounded-lg bg-slate-50 border border-slate-100">
+                              <p className="text-sm font-medium text-slate-900">"{topic.topicName}"</p>
+                              <div className="flex items-center gap-2 mt-2">
+                                <Badge variant="secondary" className="text-xs">
+                                  {topic.mentionRate.toFixed(0)}% Visibility
                                 </Badge>
-                              </td>
-                              <td className="py-3 text-right text-gray-600">{engine.example}</td>
-                            </tr>
+                              </div>
+                            </div>
                           ))}
-                        </tbody>
-                      </table>
-                    </div>
+                          {topQueries.length === 0 && (
+                            <p className="text-sm text-slate-500">No query data available yet.</p>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
+                      <CardHeader>
+                        <CardTitle className="text-primary">Potential Impact</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-4xl font-bold text-primary mb-2">{potentialImpact}</div>
+                        <p className="text-sm text-slate-600">
+                          Estimated monthly opportunities lost to {topCompetitorData?.name || 'competitors'} based on visibility gaps.
+                        </p>
+                      </CardContent>
+                    </Card>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </TabsContent>
 
-              {/* How we calculate AEO */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">How we calculate AEO</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-2 text-sm text-gray-700">
-                    <li>• <span className="font-medium">Coverage</span>: how many engines know this entity</li>
-                    <li>• <span className="font-medium">Prominence</span>: whether it's a main answer or side mention</li>
-                    <li>• <span className="font-medium">Freshness</span>: how recent those answers are</li>
-                    <li>• <span className="font-medium">Accuracy</span>: how correct and on-brand the answers feel</li>
-                  </ul>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="geo" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Local & GEO presence</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center py-8 text-gray-500">
-                    <Globe className="h-12 w-12 mx-auto text-gray-300 mb-3" />
-                    <p className="text-lg font-medium text-gray-900">Local SEO Analysis Coming Soon</p>
-                    <p className="text-sm max-w-md mx-auto mt-2">
-                      Detailed local ranking data, Google Maps visibility, and review sentiment analysis will be available in the next update.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* How we calculate GEO */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">How we calculate GEO</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-2 text-sm text-gray-700">
-                    <li>• <span className="font-medium">Location coverage</span> across countries/cities</li>
-                    <li>• <span className="font-medium">Ratings + review volume</span> in key markets</li>
-                    <li>• <span className="font-medium">Listing completeness</span> on local platforms</li>
-                    <li>• <span className="font-medium">Consistency</span> of name, address, phone (NAP)</li>
-                  </ul>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="competitors" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Competitor mention rates</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {sortedCompetitors.map((competitor, idx) => (
-                      <div key={competitor.competitorId} className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-gray-900">{competitor.name}</span>
-                            {competitor.category && (
-                              <Badge variant="outline" className="text-xs">
-                                {competitor.category}
-                              </Badge>
-                            )}
+              <TabsContent value="engines">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Answer Engine Presence</CardTitle>
+                    <CardDescription>Detailed breakdown of your visibility across key AI platforms</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {aiEngines.map((engine, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-4 rounded-lg border border-slate-100 hover:bg-slate-50 transition-colors">
+                          <div className="flex items-center gap-4">
+                            <div className={`w-2 h-2 rounded-full ${engine.status === "Mentioned" ? "bg-green-500" : "bg-slate-300"}`} />
+                            <div>
+                              <p className="font-medium text-slate-900">{engine.name}</p>
+                              <p className="text-xs text-slate-500">{engine.example}</p>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold text-gray-900">
-                              {competitor.mentionRate.toFixed(1)}%
-                            </span>
-                            {competitor.changeRate > 0 ? (
-                              <TrendingUp className="h-4 w-4 text-red-500" />
-                            ) : competitor.changeRate < 0 ? (
-                              <TrendingDown className="h-4 w-4 text-green-500" />
-                            ) : null}
+                          <Badge 
+                            variant="outline" 
+                            className={engine.status === "Mentioned" 
+                              ? "bg-green-50 text-green-700 border-green-200" 
+                              : "bg-slate-50 text-slate-500 border-slate-200"}
+                          >
+                            {engine.status}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="competitors">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Detailed Competitor Analysis</CardTitle>
+                    <CardDescription>Compare your visibility against specific competitors</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-6">
+                      {competitors?.map((competitor) => (
+                        <div key={competitor.competitorId} className="p-4 rounded-xl border border-slate-100">
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                              <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-600">
+                                {competitor.name.charAt(0)}
+                              </div>
+                              <div>
+                                <h4 className="font-medium text-slate-900">{competitor.name}</h4>
+                                <p className="text-xs text-slate-500">{competitor.category || 'Competitor'}</p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-2xl font-bold text-slate-900">{competitor.mentionRate.toFixed(1)}%</div>
+                              <p className="text-xs text-slate-500">Share of Voice</p>
+                            </div>
+                          </div>
+                          <div className="relative h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div 
+                              className="absolute top-0 left-0 h-full bg-primary transition-all duration-500" 
+                              style={{ width: `${competitor.mentionRate}%` }}
+                            />
                           </div>
                         </div>
-                        <Progress value={competitor.mentionRate} className="h-2" />
-                        <p className="text-xs text-gray-500">
-                          Mentioned in {competitor.mentionCount} out of {totalPrompts} prompts
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Key Insights */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card>
-                  <CardContent className="p-6 text-center">
-                    <div className="text-3xl font-bold text-blue-600 mb-2">
-                      {sortedCompetitors[0]?.name || 'N/A'}
-                    </div>
-                    <div className="text-sm font-medium text-gray-700">Top Competitor</div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      {(sortedCompetitors[0]?.mentionRate || 0).toFixed(1)}% mention rate
+                      ))}
                     </div>
                   </CardContent>
                 </Card>
+              </TabsContent>
 
+              <TabsContent value="geo">
                 <Card>
-                  <CardContent className="p-6 text-center">
-                    <div className="text-3xl font-bold text-green-600 mb-2">
-                      {sortedCompetitors.filter(c => c.changeRate < 0).length}
+                  <CardContent className="py-12 text-center">
+                    <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Globe className="h-8 w-8 text-slate-400" />
                     </div>
-                    <div className="text-sm font-medium text-gray-700">Losing Ground</div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      competitors declining vs you
-                    </div>
+                    <h3 className="text-xl font-semibold text-slate-900">Local & GEO Analysis</h3>
+                    <p className="text-slate-500 max-w-md mx-auto mt-2">
+                      We are currently rolling out local presence tracking. Check back soon for detailed maps and sentiment analysis.
+                    </p>
                   </CardContent>
                 </Card>
-
-                <Card>
-                  <CardContent className="p-6 text-center">
-                    <div className="text-3xl font-bold text-red-600 mb-2">
-                      {sortedCompetitors.filter(c => c.changeRate > 0).length}
-                    </div>
-                    <div className="text-sm font-medium text-gray-700">Gaining Ground</div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      competitors rising vs you
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-          </Tabs>
+              </TabsContent>
+            </Tabs>
+          </motion.div>
         )}
-
-        {/* Run Analysis Button (bottom) */}
-        {hasData && (
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold text-gray-900">Need fresh data?</h3>
-                  <p className="text-sm text-gray-600">Run a new analysis to update all metrics</p>
-                </div>
-                <Button onClick={handleRunAnalysis} disabled={isAnalyzing}>
-                  {isAnalyzing ? 'Running...' : 'Run New Analysis'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+      </main>
     </div>
   );
 }
-

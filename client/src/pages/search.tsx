@@ -3,7 +3,8 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, Sparkles, TrendingUp, Globe, Zap } from "lucide-react";
+import { Search, Sparkles, TrendingUp, Globe, Zap, ArrowRight } from "lucide-react";
+import { motion } from "framer-motion";
 
 export default function SearchPage() {
   const [, setLocation] = useLocation();
@@ -46,120 +47,129 @@ export default function SearchPage() {
   };
 
   const exampleCompanies = [
-    "Airbnb", 
     "Shopify", 
-    "Pender & Howe", 
-    "Medaki", 
-    "Manin"
+    "Stripe", 
+    "Airbnb", 
+    "Linear", 
+    "Vercel"
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 flex flex-col items-center justify-center px-4">
-      <div className="w-full max-w-3xl mx-auto text-center space-y-12">
+    <div className="min-h-screen bg-slate-50/50 flex flex-col items-center justify-center px-4 font-sans">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="w-full max-w-4xl mx-auto space-y-12"
+      >
         {/* Header */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-center gap-3 mb-6">
-            <div className="bg-gradient-to-br from-blue-600 to-indigo-600 p-3 rounded-2xl shadow-lg">
-              <Sparkles className="w-8 h-8 text-white" />
-            </div>
-            <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-              AEO · GEO Demo
-            </h1>
+        <div className="text-center space-y-6">
+          <div className="inline-flex items-center justify-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
+            <Sparkles className="w-4 h-4" />
+            <span>Next-Gen Brand Intelligence</span>
           </div>
           
-          <h2 className="text-4xl font-bold text-gray-900">
-            Search any company or person
-          </h2>
+          <h1 className="text-5xl md:text-6xl font-bold tracking-tight text-slate-900">
+            How do AI Engines <br/>
+            <span className="text-primary bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-600">
+              perceive your brand?
+            </span>
+          </h1>
           
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Type a name and see their visibility across{" "}
-            <span className="font-semibold text-blue-600">answer engines</span>{" "}
-            and{" "}
-            <span className="font-semibold text-indigo-600">local presence</span>
+          <p className="text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed">
+            Analyze your visibility across ChatGPT, Claude, Perplexity, and Google Gemini.
+            Optimize your Answer Engine Optimization (AEO) strategy.
           </p>
         </div>
 
         {/* Search Box */}
-        <Card className="shadow-2xl border-0 bg-white/80 backdrop-blur">
-          <CardContent className="p-8">
-            <div className="flex gap-3">
-              <div className="relative flex-1">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+        <div className="max-w-2xl mx-auto">
+          <Card className="shadow-xl border-0 ring-1 ring-slate-200/50 bg-white/80 backdrop-blur-xl overflow-hidden">
+            <CardContent className="p-2">
+              <div className="flex items-center gap-2">
+                <div className="pl-4 text-slate-400">
+                  <Search className="w-5 h-5" />
+                </div>
                 <Input
                   type="text"
-                  placeholder="e.g. Airbnb, Shopify, Pender & Howe, Medaki or Manin"
+                  placeholder="Enter brand name (e.g. Spotify, Notion)..."
                   value={companyInput}
                   onChange={(e) => setCompanyInput(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  className="pl-12 h-14 text-lg border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                  className="flex-1 h-14 text-lg border-0 focus-visible:ring-0 bg-transparent placeholder:text-slate-400"
                   disabled={isSearching}
+                  autoFocus
                 />
+                <Button
+                  size="lg"
+                  onClick={handleSearch}
+                  disabled={!companyInput.trim() || isSearching}
+                  className="h-12 px-8 rounded-lg bg-primary hover:bg-primary/90 text-white font-semibold transition-all hover:shadow-lg hover:shadow-primary/25"
+                >
+                  {isSearching ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <ArrowRight className="w-5 h-5" />
+                  )}
+                </Button>
               </div>
-              <Button
-                size="lg"
-                onClick={handleSearch}
-                disabled={!companyInput.trim() || isSearching}
-                className="h-14 px-8 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold shadow-lg"
-              >
-                {isSearching ? (
-                  <>
-                    <div className="animate-spin mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
-                    Searching...
-                  </>
-                ) : (
-                  <>
-                    <Search className="mr-2 h-5 w-5" />
-                    Search
-                  </>
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        {/* Example Companies */}
-        <div className="space-y-3">
-          <p className="text-sm text-gray-500">
-            This demo includes a few example entities. Try{" "}
-            {exampleCompanies.slice(0, -1).join(", ")},{" "}
-            <span className="font-medium text-gray-700">{exampleCompanies[exampleCompanies.length - 1]}</span>.
-          </p>
+          {/* Example Companies */}
+          <div className="mt-6 text-center space-y-3">
+            <p className="text-sm text-slate-500">
+              Try searching for:{" "}
+              {exampleCompanies.map((company, i) => (
+                <span 
+                  key={company}
+                  onClick={() => setCompanyInput(company)}
+                  className="inline-block mx-1 px-2 py-1 rounded-md bg-white border border-slate-200 text-slate-600 text-xs font-medium cursor-pointer hover:border-primary/50 hover:text-primary transition-colors"
+                >
+                  {company}
+                </span>
+              ))}
+            </p>
+          </div>
         </div>
 
         {/* Feature Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-8">
-          <Card className="border-blue-100 bg-blue-50/50">
-            <CardContent className="p-6 text-center space-y-2">
-              <div className="bg-blue-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto">
-                <TrendingUp className="w-6 h-6 text-blue-600" />
-              </div>
-              <h3 className="font-semibold text-gray-900">Answer Engine Visibility</h3>
-              <p className="text-sm text-gray-600">Track mentions across ChatGPT, Claude, Perplexity & more</p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-indigo-100 bg-indigo-50/50">
-            <CardContent className="p-6 text-center space-y-2">
-              <div className="bg-indigo-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto">
-                <Globe className="w-6 h-6 text-indigo-600" />
-              </div>
-              <h3 className="font-semibold text-gray-900">Local Footprint</h3>
-              <p className="text-sm text-gray-600">Geographic coverage, ratings & review volume</p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-purple-100 bg-purple-50/50">
-            <CardContent className="p-6 text-center space-y-2">
-              <div className="bg-purple-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto">
-                <Zap className="w-6 h-6 text-purple-600" />
-              </div>
-              <h3 className="font-semibold text-gray-900">Competitive Intelligence</h3>
-              <p className="text-sm text-gray-600">See how you stack up against competitors</p>
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-12">
+          {[
+            {
+              icon: TrendingUp,
+              color: "text-blue-600",
+              bg: "bg-blue-50",
+              title: "Share of Voice",
+              desc: "Track your brand mentions against competitors in AI responses."
+            },
+            {
+              icon: Globe,
+              color: "text-indigo-600",
+              bg: "bg-indigo-50",
+              title: "Global Reach",
+              desc: "Understand how your brand appears in different regions."
+            },
+            {
+              icon: Zap,
+              color: "text-purple-600",
+              bg: "bg-purple-50",
+              title: "Real-time Analysis",
+              desc: "Get instant feedback on your brand's standing in the AI era."
+            }
+          ].map((feature, i) => (
+            <Card key={i} className="border-0 shadow-sm bg-white/60 hover:bg-white hover:shadow-md transition-all duration-300">
+              <CardContent className="p-6 text-center space-y-3">
+                <div className={`w-12 h-12 rounded-xl ${feature.bg} flex items-center justify-center mx-auto mb-4`}>
+                  <feature.icon className={`w-6 h-6 ${feature.color}`} />
+                </div>
+                <h3 className="font-semibold text-slate-900">{feature.title}</h3>
+                <p className="text-sm text-slate-500 leading-relaxed">{feature.desc}</p>
+              </CardContent>
+            </Card>
+          ))}
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
-
